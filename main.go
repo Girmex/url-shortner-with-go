@@ -59,7 +59,29 @@ func generateShortCode() string {
 
 // Shorten a URL and store it
 func shorten(longURL string) string {
-	short := generateShortCode()
+	// Check if URL already exists
+	for _, url := range urls {
+		if url.Long == longURL {
+			fmt.Println("URL already exists! Generating a new short code anyway...")
+			break
+		}
+	}
+
+	var short string
+	for {
+		short = generateShortCode()
+		exists := false
+		for _, url := range urls {
+			if url.Short == short {
+				exists = true
+				break
+			}
+		}
+		if !exists {
+			break
+		}
+	}
+
 	urls = append(urls, URL{Short: short, Long: longURL})
 	saveURLs()
 	return short
@@ -73,6 +95,31 @@ func expand(short string) string {
 		}
 	}
 	return "URL not found!"
+}
+
+// List all URLs
+func listURLs() {
+	if len(urls) == 0 {
+		fmt.Println("No URLs stored.")
+		return
+	}
+	fmt.Println("Stored URLs:")
+	for _, url := range urls {
+		fmt.Printf("Short: %s → Long: %s\n", url.Short, url.Long)
+	}
+}
+
+// Delete a URL by short code
+func deleteURL(short string) {
+	for i, url := range urls {
+		if url.Short == short {
+			urls = append(urls[:i], urls[i+1:]...)
+			saveURLs()
+			fmt.Println("Deleted short code:", short)
+			return
+		}
+	}
+	fmt.Println("Short code not found:", short)
 }
 
 func main() {
@@ -106,9 +153,25 @@ func main() {
 		},
 	}
 
+	var listCmd = &cobra.Command{
+		Use:   "list",
+		Short: "List all stored URLs",
+		Run: func(cmd *cobra.Command, args []string) {
+			listURLs()
+		},
+	}
+
+	var deleteCmd = &cobra.Command{
+		Use:   "delete [short-code]",
+		Short: "Delete a URL by short code",
+		Args:  cobra.ExactArgs(1),
+		Run: func(cmd *cobra.Command, args []string) {
+			deleteURL(args[0])
+		},
+	}
+
 	// Add subcommands
-	rootCmd.AddCommand(shortenCmd)
-	rootCmd.AddCommand(expandCmd)
+	rootCmd.AddCommand(shortenCmd, expandCmd, listCmd, deleteCmd)
 
 	// Execute root command
 	rootCmd.Execute()
